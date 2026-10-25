@@ -9,6 +9,159 @@ window.__ModuleLoader__.load({
     const PANEL_ID = 'dsh-plugin-manager';
     const OUR_PACKAGE = '@local/dsh-plugin-manager';
 
+    const CATEGORIES = [
+      {
+        id: 'market',
+        zh: '插件与市场',
+        en: 'Plugins & market',
+        kw: ['插件市场', '插件管理', '插件商店', '插件清单', '插件 bundle', '.dspack', 'dsh-pack', 'plugin market', 'market'],
+      },
+      {
+        id: 'theme',
+        zh: '主题与外观',
+        en: 'Theme & look',
+        kw: ['主题', '皮肤', '毛玻璃', '配色', 'theme', 'skin', 'palette'],
+      },
+      {
+        id: 'ui',
+        zh: 'UI 增强',
+        en: 'UI',
+        kw: ['侧栏', '挂件', 'widget', 'hud', 'sidebar', 'layout', '宠物', 'pet'],
+      },
+      {
+        id: 'identity',
+        zh: '身份与通信',
+        en: 'Identity & comms',
+        kw: [
+          '人格',
+          '身份',
+          '人设',
+          'persona',
+          'identity',
+          '认证',
+          '登录',
+          '网关',
+          '远程',
+          '隧道',
+          'tailscale',
+          'tunnel',
+          '通信',
+          'remote',
+          '机器人',
+          '微信',
+          '飞书',
+          '企微',
+          '钉钉',
+          'telegram',
+          'whatsapp',
+          'slack',
+          'discord',
+          'custom mode',
+          'system prompt',
+        ],
+      },
+      {
+        id: 'memory',
+        zh: '记忆',
+        en: 'Memory',
+        kw: ['记忆', '上下文', '压缩', '回忆', 'memory', 'context', 'compact', 'recall', 'mnemon'],
+      },
+      {
+        id: 'cost',
+        zh: '用量与计费',
+        en: 'Usage & billing',
+        kw: ['费用', '计费', '成本', '额度', '用量', '消耗', 'usage', 'billing', 'cost', 'quota', 'spend'],
+      },
+      {
+        id: 'tools',
+        zh: '工具与能力',
+        en: 'Tools & skills',
+        kw: ['工具', '技能', '能力', 'tool', 'skill', 'mcp', 'office', 'univer', '文档', '表格', 'pdf', 'spreadsheet', 'document'],
+      },
+      {
+        id: 'session',
+        zh: '会话与消息',
+        en: 'Sessions & messages',
+        kw: ['会话', '消息', '聊天', '粘贴', '待办', '通知', '输入框', 'session', 'message', 'chat', 'paste', 'todo', 'notify', 'composer'],
+      },
+      {
+        id: 'browser',
+        zh: '浏览器与网页',
+        en: 'Browser & web',
+        kw: ['浏览器', '网页', '搜索', '抓取', '爬虫', 'browser', 'web search', 'search', 'fetch', 'crawl', 'cdp'],
+      },
+      {
+        id: 'dev',
+        zh: '开发与调试',
+        en: 'Dev & debugging',
+        kw: ['代码', '开发', '审查', '复核', '调试', '流水线', 'code', 'dev', 'review', 'debug', 'pipeline', 'git'],
+      },
+      {
+        id: 'model',
+        zh: '模型与账号接入',
+        en: 'Models & accounts',
+        kw: ['模型', '线路', '账号', 'provider', 'llm', 'openai', 'anthropic', 'api key', 'routing'],
+      },
+      {
+        id: 'media',
+        zh: '内容与媒体',
+        en: 'Content & media',
+        kw: ['视频', '音频', 'b站', 'bilibili', '播客', 'video', 'audio', 'podcast', 'media'],
+      },
+      {
+        id: 'security',
+        zh: '安全与权限',
+        en: 'Safety & permissions',
+        kw: ['安全', '权限', '沙箱', '审批', 'safety', 'permission', 'sandbox', 'approval', 'guard', 'destructive', 'secret'],
+      },
+    ];
+
+    const OTHER_CATEGORY = { id: 'other', zh: '其他', en: 'Other', kw: [] };
+
+    const ASCII_KEYWORD = /^[\x00-\x7f]+$/;
+    const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const CATEGORY_RULES = CATEGORIES.map((category) => ({
+      id: category.id,
+      rules: category.kw.map((keyword) => ({
+        raw: keyword,
+        pattern: ASCII_KEYWORD.test(keyword)
+          ? new RegExp('\\b' + escapeRegExp(keyword) + '(s|es)?\\b')
+          : null,
+      })),
+    }));
+
+    function categoryText(bundle) {
+      const meta = (bundle && bundle.meta) || {};
+      const localize = (value) =>
+        value && typeof value === 'object' ? [value.zh, value.en].filter(Boolean).join(' ') : '';
+      return [
+        bundle && bundle.name,
+        bundle && bundle.description,
+        localize(meta.title),
+        localize(meta.description),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+    }
+
+    function categoryOf(bundle) {
+      const text = categoryText(bundle);
+      for (const rule of CATEGORY_RULES) {
+        for (const item of rule.rules) {
+          if (item.pattern ? item.pattern.test(text) : text.includes(item.raw)) return rule.id;
+        }
+      }
+      return OTHER_CATEGORY.id;
+    }
+
+    function categoryLabel(id, localeId) {
+      const category =
+        id === OTHER_CATEGORY.id ? OTHER_CATEGORY : CATEGORIES.find((item) => item.id === id);
+      if (!category) return id;
+      return localeId === 'en' ? category.en : category.zh;
+    }
+
     const ZH = {
       nav: '插件管理',
       title: '插件管理器',
@@ -47,6 +200,9 @@ window.__ModuleLoader__.load({
       unknownError: '未知错误',
       openTip: '打开插件管理器',
       toggleTip: '启用 / 停用该插件',
+      catAll: '全部',
+      catTip: '按插件功能自动归类',
+      emptyCat: '该分类下没有插件',
     };
 
     const EN = {
@@ -87,6 +243,9 @@ window.__ModuleLoader__.load({
       unknownError: 'Unknown error',
       openTip: 'Open the plugin manager',
       toggleTip: 'Enable or disable this plugin',
+      catAll: 'All',
+      catTip: 'Categories are inferred from each plugin description',
+      emptyCat: 'No plugins in this category',
     };
 
     const CSS = [
@@ -108,6 +267,13 @@ window.__ModuleLoader__.load({
       '.dpm-btn.danger{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}',
       '.dpm-btn.danger.confirm{background:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-bg-base)}',
       '.dpm-list{display:flex;flex-direction:column;gap:12px;max-width:920px}',
+      '.dpm-cats{display:flex;flex-wrap:wrap;gap:6px;max-width:920px;margin:0 0 14px}',
+      '.dpm-cat{appearance:none;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--dsw-alias-border-l1);background:transparent;color:var(--dsw-alias-label-secondary);border-radius:999px;padding:3px 10px;font:inherit;font-size:12px;line-height:18px;cursor:pointer;transition:background .12s,color .12s,border-color .12s}',
+      '.dpm-cat:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
+      '.dpm-cat.on{background:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base)}',
+      '.dpm-cat-n{font-size:11px;opacity:.72;font-variant-numeric:tabular-nums}',
+      '.dpm-cat.on .dpm-cat-n{opacity:.88}',
+      '.dpm-badge.cat{background:transparent;border:1px solid var(--dsw-alias-border-l1)}',
       '.dpm-card{display:flex;gap:12px;padding:14px 16px;border:1px solid var(--dsw-alias-border-l1);border-radius:14px;background:var(--dsw-alias-bg-layer-1)}',
       '.dpm-card.off{opacity:.74}',
       '.dpm-card-body{flex:1;min-width:0}',
@@ -344,7 +510,7 @@ window.__ModuleLoader__.load({
     }
 
     function PluginCard(props) {
-      const { bundle, liveRows, t, localeId, pending, confirming, setConfirming, expanded, onExpand, onToggle, onRemove, onToggleRow } = props;
+      const { bundle, liveRows, t, localeId, pending, confirming, setConfirming, expanded, onExpand, onToggle, onRemove, onToggleRow, catLabel } = props;
       const title = localize(bundle.meta && bundle.meta.title, localeId) || bundle.name;
       const description = localize(bundle.meta && bundle.meta.description, localeId) || bundle.description || '';
       const kind = sourceKind(bundle);
@@ -365,6 +531,7 @@ window.__ModuleLoader__.load({
             h('span', { className: 'dpm-title' }, title),
             bundle.version ? h('span', { className: 'dpm-ver' }, 'v' + bundle.version) : null,
             h('span', { className: 'dpm-badge ' + kind }, sourceLabel(kind, t)),
+            catLabel ? h('span', { className: 'dpm-badge cat' }, catLabel) : null,
             h('span', { className: 'dpm-state' + (bundle.enabled ? ' on' : '') }, bundle.enabled ? t('enabled') : t('disabled'))
           ),
           h('div', { className: 'dpm-pkg' }, bundle.name),
@@ -533,6 +700,48 @@ window.__ModuleLoader__.load({
         return list;
       }, [inventory.bundles]);
 
+      const classified = useMemo(
+        () => items.map((bundle) => ({ bundle, cat: categoryOf(bundle) })),
+        [items]
+      );
+
+      const categoryCounts = useMemo(() => {
+        const counts = {};
+        for (const entry of classified) counts[entry.cat] = (counts[entry.cat] || 0) + 1;
+        return counts;
+      }, [classified]);
+
+      const [activeCat, setActiveCat] = useState('all');
+
+      useEffect(() => {
+        if (activeCat !== 'all' && !categoryCounts[activeCat]) setActiveCat('all');
+      }, [activeCat, categoryCounts]);
+
+      const visible = useMemo(
+        () => (activeCat === 'all' ? classified : classified.filter((entry) => entry.cat === activeCat)),
+        [activeCat, classified]
+      );
+
+      const chips = useMemo(() => {
+        const list = [{ id: 'all', label: t('catAll'), n: classified.length }];
+        for (const category of CATEGORIES) {
+          if (!categoryCounts[category.id]) continue;
+          list.push({
+            id: category.id,
+            label: categoryLabel(category.id, localeId),
+            n: categoryCounts[category.id],
+          });
+        }
+        if (categoryCounts[OTHER_CATEGORY.id]) {
+          list.push({
+            id: OTHER_CATEGORY.id,
+            label: categoryLabel(OTHER_CATEGORY.id, localeId),
+            n: categoryCounts[OTHER_CATEGORY.id],
+          });
+        }
+        return list;
+      }, [categoryCounts, classified.length, localeId, t]);
+
       const runAction = useCallback(
         async (key, action) => {
           if (!api || pending) return;
@@ -600,6 +809,27 @@ window.__ModuleLoader__.load({
             )
           )
         ),
+        classified.length
+          ? h(
+              'div',
+              { className: 'dpm-cats', role: 'tablist', 'aria-label': t('catTip'), title: t('catTip') },
+              chips.map((chip) =>
+                h(
+                  'button',
+                  {
+                    key: chip.id,
+                    type: 'button',
+                    role: 'tab',
+                    'aria-selected': activeCat === chip.id ? 'true' : 'false',
+                    className: 'dpm-cat' + (activeCat === chip.id ? ' on' : ''),
+                    onClick: () => setActiveCat(chip.id),
+                  },
+                  chip.label,
+                  h('span', { className: 'dpm-cat-n' }, String(chip.n))
+                )
+              )
+            )
+          : null,
         inventory.error && inventory.error !== 'unavailable'
           ? h('div', { className: 'dpm-error' }, t('loadFailed') + ': ' + inventory.error)
           : null,
@@ -615,20 +845,24 @@ window.__ModuleLoader__.load({
         !inventory.loading && !items.length && inventory.error !== 'unavailable'
           ? h('div', { className: 'dpm-empty' }, t('empty'))
           : null,
+        !inventory.loading && items.length && !visible.length
+          ? h('div', { className: 'dpm-empty' }, t('emptyCat'))
+          : null,
         h(
           'div',
           { className: 'dpm-list' },
-          items.map((bundle) =>
+          visible.map((entry) =>
             h(PluginCard, {
-              key: bundle.name,
-              bundle,
+              key: entry.bundle.name,
+              bundle: entry.bundle,
+              catLabel: categoryLabel(entry.cat, localeId),
               liveRows: liveByEntry,
               t,
               localeId,
-              pending: pending === bundle.name,
+              pending: pending === entry.bundle.name,
               confirming,
               setConfirming,
-              expanded: !!expanded[bundle.name],
+              expanded: !!expanded[entry.bundle.name],
               onExpand: (name) =>
                 setExpanded((prev) => ({ ...prev, [name]: !prev[name] })),
               onToggle: toggleBundle,

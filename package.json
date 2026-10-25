@@ -1,9 +1,9 @@
 {
   "name": "@local/dsh-plugin-manager",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "插件管理器：侧栏入口，集中查看、启用、停用、卸载全部非 DSH 原生插件",
+  "description": "插件管理器：侧栏入口，集中查看、按功能分类筛选、启用、停用、卸载全部非 DSH 原生插件",
   "license": "MIT",
   "author": "DDTomTom",
   "repository": {
@@ -17,9 +17,19 @@
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
-  "files": ["index.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg", "README.md", "LICENSE"],
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "immediately": true,

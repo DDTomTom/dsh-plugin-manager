@@ -1,12 +1,13 @@
 # 插件管理器 · DSH Plugin Manager
 
-一个给 DeepSeek Harness 用的侧栏插件管理器：把当前 profile 里**所有非 DSH 原生**的插件收进一个页面，逐条看描述、启用 / 停用、卸载。
+一个给 DeepSeek Harness 用的侧栏插件管理器：把当前 profile 里**所有非 DSH 原生**的插件收进一个页面，逐条看描述、按功能分类筛选、启用 / 停用、卸载。
 
 ![icon](icon.svg)
 
 - 侧栏入口位于「插件市场」正下方（`sidebar.footer.action`，order 10），点击后在主区域打开管理器。
 - 数据来自 DSH 宿主的 `pluginManager` 服务（`listBundles` / `listPlugins`），只展示 `availability === "profile"` 的 bundle —— 也就是你自己装进来的那些：插件市场下载、npm 直装、GitHub 直装、本地 link 自编，都在列表里。
-- 每张卡片显示：标题、版本、来源徽标（npm 市场 / GitHub 直装 / 本地自编）、包名、功能描述、启用状态。
+- 每张卡片显示：标题、版本、来源徽标（npm 市场 / GitHub 直装 / 本地自编）、**功能分类**、包名、功能描述、启用状态。
+- **分类筛选**：页头下方一排分类 chip（全部 / 插件与市场 / 主题与外观 / UI 增强 / 身份与通信 / 记忆 / 用量与计费 / 工具与能力 / 会话与消息 / 浏览器与网页 / 开发与调试 / 模型与账号接入 / 内容与媒体 / 安全与权限 / 其他），带每类数量，点一下只看该类；分类由插件名称 + 描述关键词自动推断（不读网络、不改插件本身）。
 - **开关**：整包启用 / 停用（`setBundleEnabled`）。
 - **组件 (N)**：展开该包在 Loader 里的每一行，可逐行启用 / 停用（`setPluginEnabled`）。
 - **卸载**：两步确认后调用 `removeBundle`，移除 profile 依赖；插件文件与数据可能保留。
@@ -35,6 +36,7 @@
 ## 使用
 
 - 打开：点侧栏「插件管理」。
+- 分类：点 chip 过滤；分类是关键词启发式（标题 / 描述 / 包名），新插件可能落到「其他」，可以在 `client.js` 的 `CATEGORIES` 里补关键词。
 - 启停：卡片左侧开关即整包开关；「组件 (N)」里的开关只控制单个 Loader 行。
 - 卸载：点「卸载」→ 变成「确认卸载」→ 再点一次才真正删除；点「取消」放弃。
 - 操作结果会在面板底部以提示条给出：已生效 / 已保存，重启 DSH 后生效 / 已被更上层覆盖 / 操作失败。
@@ -55,6 +57,7 @@
 ## 已知限制
 
 - 列表以 **bundle** 为单位；没有 bundle patch 的裸依赖不会单独成卡。
+- 分类是**关键词启发式**，不是插件自带元数据：判定结果可能和你的直觉不同（例如「余额挂件」归 UI 增强而不是用量与计费）。分类名与关键词都写在 `client.js` 顶部的 `CATEGORIES` 数组里，改完刷新即可。
 - 客户端代码改动需要整页刷新（Ctrl+R）才会加载新版 `client.js`；桌面版重开更稳。
 - 卸载不备份，删了就删了；删前请确认还能重装。
 - 只在深色主题下做视觉验证；面板只使用 `--dsw-alias-*` 主题 token，浅色主题理论可读但未单独验证。
@@ -73,7 +76,9 @@ icon.svg            # 图标
 
 ## English
 
-A sidebar plugin manager for DeepSeek Harness: lists every non-native plugin installed in the current profile (market, npm, GitHub, or locally linked), shows a short description and source badge, and lets you enable, disable, or uninstall each bundle (plus its individual loader rows) from one panel.
+A sidebar plugin manager for DeepSeek Harness: lists every non-native plugin installed in the current profile (market, npm, GitHub, or locally linked), shows a short description and source badge, filters them by inferred function category, and lets you enable, disable, or uninstall each bundle (plus its individual loader rows) from one panel.
+
+Categories are inferred from each plugin's name and description with keyword rules defined in `CATEGORIES` at the top of `client.js`; nothing is fetched from the network and the plugin itself is never modified.
 
 Install it as a bundle by pointing DSH's plugin manager at this directory, then refresh the page. Requires DSH 0.2.1.x.
 
