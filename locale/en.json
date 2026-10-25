@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Plugin Manager",
+    "description": "Sidebar plugin manager: lists every non-native DSH plugin (market / npm / GitHub / locally authored), with enable, disable and uninstall controls plus a short description."
+  }
+}
