@@ -1,9 +1,9 @@
 {
   "name": "@local/dsh-plugin-manager",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "插件管理器：侧栏入口，集中查看、按功能分类筛选、启用、停用、卸载全部非 DSH 原生插件",
+  "description": "插件管理器：侧栏入口，集中查看、按功能分类筛选、启用/停用/卸载，并支持开关快照与一键恢复",
   "license": "MIT",
   "author": "DDTomTom",
   "repository": {

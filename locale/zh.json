@@ -2,5 +2,27 @@
   "meta": {
     "title": "插件管理器",
     "description": "侧栏插件管理器：列出全部非 DSH 原生插件（市场 / npm / GitHub / 本地自编），可启用、停用与卸载，并显示每个插件的功能简介。"
+  },
+  "dshPluginManager": {
+    "snapSave": "记住当前",
+    "snapList": "快照",
+    "snapName": "快照名称",
+    "snapSaveBtn": "保存",
+    "snapCancel": "取消",
+    "snapRestore": "恢复",
+    "snapDelete": "删除",
+    "snapConfirmDelete": "确认删除",
+    "snapSaved": "已保存快照（{n} 个插件）",
+    "snapRestored": "已恢复 {n} 项",
+    "snapSkipped": "跳过 {m} 项（未安装）",
+    "snapFailed": "{k} 项失败",
+    "snapRestart": "部分需重启 DSH",
+    "snapEmpty": "还没有快照",
+    "snapPreRestore": "恢复前",
+    "snapPrefix": "快照",
+    "snapMeta": "已启用 {x} / 共 {y}",
+    "snapDeleted": "已删除快照",
+    "snapStoreFailed": "保存快照失败：浏览器存储不可用",
+    "snapOverridden": "{n} 项被更上层配置覆盖"
   }
 }

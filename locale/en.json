@@ -2,5 +2,27 @@
   "meta": {
     "title": "Plugin Manager",
     "description": "Sidebar plugin manager: lists every non-native DSH plugin (market / npm / GitHub / locally authored), with enable, disable and uninstall controls plus a short description."
+  },
+  "dshPluginManager": {
+    "snapSave": "Remember current",
+    "snapList": "Snapshots",
+    "snapName": "Snapshot name",
+    "snapSaveBtn": "Save",
+    "snapCancel": "Cancel",
+    "snapRestore": "Restore",
+    "snapDelete": "Delete",
+    "snapConfirmDelete": "Confirm delete",
+    "snapSaved": "Snapshot saved ({n} plugins)",
+    "snapRestored": "Restored {n}",
+    "snapSkipped": "skipped {m} (not installed)",
+    "snapFailed": "{k} failed",
+    "snapRestart": "restart DSH for some of them",
+    "snapEmpty": "No snapshots yet",
+    "snapPreRestore": "Before restore",
+    "snapPrefix": "Snapshot",
+    "snapMeta": "{x} enabled / {y} total",
+    "snapDeleted": "Snapshot deleted",
+    "snapStoreFailed": "Snapshot not saved: browser storage unavailable",
+    "snapOverridden": "{n} overridden by a higher layer"
   }
 }

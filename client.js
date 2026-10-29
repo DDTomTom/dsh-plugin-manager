@@ -8,6 +8,9 @@ window.__ModuleLoader__.load({
     const NS = 'dshPluginManager';
     const PANEL_ID = 'dsh-plugin-manager';
     const OUR_PACKAGE = '@local/dsh-plugin-manager';
+    const SNAP_STORAGE_KEY = 'dsh-plugin-manager:snapshots:v1';
+    const SNAP_LIMIT = 20;
+    const SNAP_PENDING = '__dpm_snapshot_restore__';
 
     const CATEGORIES = [
       {
@@ -203,6 +206,26 @@ window.__ModuleLoader__.load({
       catAll: '全部',
       catTip: '按插件功能自动归类',
       emptyCat: '该分类下没有插件',
+      snapSave: '记住当前',
+      snapList: '快照',
+      snapName: '快照名称',
+      snapSaveBtn: '保存',
+      snapCancel: '取消',
+      snapRestore: '恢复',
+      snapDelete: '删除',
+      snapConfirmDelete: '确认删除',
+      snapSaved: '已保存快照（{n} 个插件）',
+      snapRestored: '已恢复 {n} 项',
+      snapSkipped: '跳过 {m} 项（未安装）',
+      snapFailed: '{k} 项失败',
+      snapRestart: '部分需重启 DSH',
+      snapEmpty: '还没有快照',
+      snapPreRestore: '恢复前',
+      snapPrefix: '快照',
+      snapMeta: '已启用 {x} / 共 {y}',
+      snapDeleted: '已删除快照',
+      snapStoreFailed: '保存快照失败：浏览器存储不可用',
+      snapOverridden: '{n} 项被更上层配置覆盖',
     };
 
     const EN = {
@@ -246,6 +269,26 @@ window.__ModuleLoader__.load({
       catAll: 'All',
       catTip: 'Categories are inferred from each plugin description',
       emptyCat: 'No plugins in this category',
+      snapSave: 'Remember current',
+      snapList: 'Snapshots',
+      snapName: 'Snapshot name',
+      snapSaveBtn: 'Save',
+      snapCancel: 'Cancel',
+      snapRestore: 'Restore',
+      snapDelete: 'Delete',
+      snapConfirmDelete: 'Confirm delete',
+      snapSaved: 'Snapshot saved ({n} plugins)',
+      snapRestored: 'Restored {n}',
+      snapSkipped: 'skipped {m} (not installed)',
+      snapFailed: '{k} failed',
+      snapRestart: 'restart DSH for some of them',
+      snapEmpty: 'No snapshots yet',
+      snapPreRestore: 'Before restore',
+      snapPrefix: 'Snapshot',
+      snapMeta: '{x} enabled / {y} total',
+      snapDeleted: 'Snapshot deleted',
+      snapStoreFailed: 'Snapshot not saved: browser storage unavailable',
+      snapOverridden: '{n} overridden by a higher layer',
     };
 
     const CSS = [
@@ -301,6 +344,18 @@ window.__ModuleLoader__.load({
       '.dpm-error{margin:0 0 14px;padding:10px 12px;border-radius:10px;border:1px solid var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary);font-size:12px;overflow-wrap:anywhere}',
       '.dpm-toast{position:sticky;bottom:16px;margin:18px 0 0;display:inline-block;padding:8px 12px;border-radius:10px;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l1);font-size:12px;color:var(--dsw-alias-label-primary);box-shadow:0 6px 20px rgba(0,0,0,.12)}',
       '.dpm-toast.err{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}',
+      '.dpm-snaps{display:flex;flex-direction:column;gap:10px;max-width:920px;margin:0 0 14px}',
+      '.dpm-snaps-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
+      '.dpm-snap-hint{font-size:12px;color:var(--dsw-alias-label-secondary)}',
+      '.dpm-inline-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
+      '.dpm-input{appearance:none;box-sizing:border-box;flex:1 1 240px;min-width:180px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);border-radius:8px;padding:5px 10px;font:inherit;font-size:12px;line-height:18px}',
+      '.dpm-input:focus{outline:none;border-color:var(--dsw-alias-brand-primary)}',
+      '.dpm-input:disabled{opacity:.6;cursor:default}',
+      '.dpm-snap-list{display:flex;flex-direction:column;gap:8px}',
+      '.dpm-snap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}',
+      '.dpm-snap-name{flex:1 1 180px;min-width:0;font-size:13px;color:var(--dsw-alias-label-primary);overflow-wrap:anywhere}',
+      '.dpm-snap-meta{font-size:11px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;white-space:nowrap}',
+      '.dpm-snap-actions{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto;flex-wrap:wrap}',
     ].join('\n');
 
     function ensureCss() {
@@ -355,6 +410,149 @@ window.__ModuleLoader__.load({
 
     function fmt(template, n) {
       return String(template).replace('{n}', String(n));
+    }
+
+    function pad2(value) {
+      return value < 10 ? '0' + value : String(value);
+    }
+
+    function localStamp(ts) {
+      const date = new Date(ts);
+      return (
+        date.getFullYear() +
+        '-' +
+        pad2(date.getMonth() + 1) +
+        '-' +
+        pad2(date.getDate()) +
+        ' ' +
+        pad2(date.getHours()) +
+        ':' +
+        pad2(date.getMinutes())
+      );
+    }
+
+    function localShort(ts) {
+      const date = new Date(ts);
+      return (
+        pad2(date.getMonth() + 1) +
+        '-' +
+        pad2(date.getDate()) +
+        ' ' +
+        pad2(date.getHours()) +
+        ':' +
+        pad2(date.getMinutes())
+      );
+    }
+
+    function fillTemplate(template, values) {
+      return String(template).replace(/\{(\w+)\}/g, (match, key) =>
+        Object.prototype.hasOwnProperty.call(values || {}, key) ? String(values[key]) : match
+      );
+    }
+
+    function isSnapshotRow(row) {
+      return (
+        !!row &&
+        typeof row === 'object' &&
+        typeof row.entryId === 'string' &&
+        row.entryId.length > 0 &&
+        typeof row.enabled === 'boolean'
+      );
+    }
+
+    function isSnapshotBundle(bundle) {
+      return (
+        !!bundle &&
+        typeof bundle === 'object' &&
+        typeof bundle.name === 'string' &&
+        bundle.name.length > 0 &&
+        typeof bundle.enabled === 'boolean' &&
+        Array.isArray(bundle.rows) &&
+        bundle.rows.every(isSnapshotRow)
+      );
+    }
+
+    function isSnapshot(snapshot) {
+      return (
+        !!snapshot &&
+        typeof snapshot === 'object' &&
+        typeof snapshot.id === 'string' &&
+        typeof snapshot.name === 'string' &&
+        snapshot.name.length > 0 &&
+        typeof snapshot.ts === 'number' &&
+        Number.isFinite(snapshot.ts) &&
+        Array.isArray(snapshot.bundles) &&
+        snapshot.bundles.every(isSnapshotBundle)
+      );
+    }
+
+    function readSnapshots() {
+      try {
+        if (typeof localStorage === 'undefined' || !localStorage) return [];
+        const raw = localStorage.getItem(SNAP_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter(isSnapshot).slice(0, SNAP_LIMIT);
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function writeSnapshots(list) {
+      try {
+        if (typeof localStorage === 'undefined' || !localStorage) return false;
+        localStorage.setItem(SNAP_STORAGE_KEY, JSON.stringify(list.slice(0, SNAP_LIMIT)));
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function nextSnapshotId(existing) {
+      const taken = new Set((existing || []).map((item) => item && item.id));
+      const base = Date.now();
+      let bump = 0;
+      let id = 's' + base;
+      while (taken.has(id)) {
+        bump += 1;
+        id = 's' + (base + bump);
+      }
+      return id;
+    }
+
+    function captureSnapshot(items, liveByEntry, name, existing) {
+      const bundles = [];
+      for (const bundle of items) {
+        if (!bundle || bundle.availability !== 'profile' || bundle.installed === false) continue;
+        if (!bundle.name) continue;
+        const rows = [];
+        const sourceRows = Array.isArray(bundle.rows) ? bundle.rows : [];
+        for (const row of sourceRows) {
+          if (!row || typeof row.entryId !== 'string' || !row.entryId) continue;
+          const live = liveByEntry.get(row.entryId);
+          rows.push({
+            entryId: row.entryId,
+            enabled: live && typeof live.enabled === 'boolean' ? live.enabled : !!bundle.enabled,
+          });
+        }
+        bundles.push({ name: bundle.name, enabled: !!bundle.enabled, rows });
+      }
+      return {
+        id: nextSnapshotId(existing),
+        name: String(name),
+        ts: Date.now(),
+        bundles,
+      };
+    }
+
+    function snapshotOutcome(res) {
+      if (!res || typeof res !== 'object') return 'applied';
+      if (res.application === 'failed') return 'failed';
+      if (res.application === 'restart-required') return 'restart';
+      if (res.application === 'overridden') return 'overridden';
+      if (res.error && !res.application) return 'failed';
+      return 'applied';
     }
 
     function sourceKind(bundle) {
@@ -652,6 +850,139 @@ window.__ModuleLoader__.load({
       return remote && remote.pluginManager ? remote.pluginManager : undefined;
     }
 
+    function SnapshotBar(props) {
+      const {
+        t,
+        snapshots,
+        listOpen,
+        naming,
+        nameDraft,
+        deleteId,
+        busy,
+        onStartName,
+        onNameDraft,
+        onSaveName,
+        onCancelName,
+        onToggleList,
+        onRestore,
+        onAskDelete,
+        onDelete,
+      } = props;
+      const hasSnapshots = snapshots.length > 0;
+      return h(
+        'div',
+        { className: 'dpm-snaps' },
+        h(
+          'div',
+          { className: 'dpm-snaps-bar' },
+          h(
+            'button',
+            { type: 'button', className: 'dpm-btn', disabled: busy, onClick: onStartName },
+            t('snapSave')
+          ),
+          hasSnapshots
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'dpm-btn',
+                  disabled: busy,
+                  'aria-expanded': listOpen ? 'true' : 'false',
+                  onClick: onToggleList,
+                },
+                t('snapList') + ' (' + snapshots.length + ')'
+              )
+            : h('span', { className: 'dpm-snap-hint' }, t('snapEmpty'))
+        ),
+        naming
+          ? h(
+              'div',
+              { className: 'dpm-inline-form' },
+              h('input', {
+                className: 'dpm-input',
+                type: 'text',
+                value: nameDraft,
+                placeholder: t('snapName'),
+                'aria-label': t('snapName'),
+                disabled: busy,
+                onChange: (event) => onNameDraft(event.target.value),
+                onKeyDown: (event) => {
+                  if (event.nativeEvent && event.nativeEvent.isComposing) return;
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    onSaveName();
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    onCancelName();
+                  }
+                },
+              }),
+              h(
+                'button',
+                { type: 'button', className: 'dpm-btn', disabled: busy, onClick: onSaveName },
+                t('snapSaveBtn')
+              ),
+              h(
+                'button',
+                { type: 'button', className: 'dpm-btn', onClick: onCancelName },
+                t('snapCancel')
+              )
+            )
+          : null,
+        listOpen && hasSnapshots
+          ? h(
+              'div',
+              { className: 'dpm-snap-list' },
+              snapshots.map((snapshot) => {
+                const total = snapshot.bundles.length;
+                const enabled = snapshot.bundles.filter((bundle) => bundle.enabled).length;
+                const confirming = deleteId === snapshot.id;
+                return h(
+                  'div',
+                  { className: 'dpm-snap', key: snapshot.id },
+                  h('div', { className: 'dpm-snap-name', title: snapshot.name }, snapshot.name),
+                  h(
+                    'span',
+                    { className: 'dpm-snap-meta' },
+                    localShort(snapshot.ts) +
+                      ' · ' +
+                      fillTemplate(t('snapMeta'), { x: enabled, y: total })
+                  ),
+                  h(
+                    'div',
+                    { className: 'dpm-snap-actions' },
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'dpm-btn',
+                        disabled: busy,
+                        onClick: () => onRestore(snapshot),
+                      },
+                      t('snapRestore')
+                    ),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'dpm-btn danger' + (confirming ? ' confirm' : ''),
+                        'data-dpm-snap-del': snapshot.id,
+                        disabled: busy,
+                        onClick: () => {
+                          if (confirming) onDelete(snapshot.id);
+                          else onAskDelete(snapshot.id);
+                        },
+                      },
+                      confirming ? t('snapConfirmDelete') : t('snapDelete')
+                    )
+                  )
+                );
+              })
+            )
+          : null
+      );
+    }
+
     function ManagerPage(props) {
       const { t, ctx } = props;
       const remote = resolveRemote(ctx);
@@ -663,12 +994,37 @@ window.__ModuleLoader__.load({
       const [confirming, setConfirming] = useState(null);
       const [expanded, setExpanded] = useState({});
       const [toast, setToast] = useState(null);
+      const [snapshots, setSnapshots] = useState(readSnapshots);
+      const [snapListOpen, setSnapListOpen] = useState(false);
+      const [snapNaming, setSnapNaming] = useState(false);
+      const [snapNameDraft, setSnapNameDraft] = useState('');
+      const [snapDeleteId, setSnapDeleteId] = useState(null);
+      const snapBusyRef = React.useRef(false);
+
+      const commitSnapshots = useCallback((next) => {
+        const limited = next.slice(0, SNAP_LIMIT);
+        if (!writeSnapshots(limited)) return false;
+        setSnapshots(limited);
+        return true;
+      }, []);
 
       useEffect(() => {
         if (!toast) return undefined;
         const timer = setTimeout(() => setToast(null), 4200);
         return () => clearTimeout(timer);
       }, [toast]);
+      useEffect(() => {
+        if (!snapDeleteId || typeof document === 'undefined') return undefined;
+        const onPointerDown = (event) => {
+          const target = event && event.target;
+          if (target && typeof target.closest === 'function' && target.closest('[data-dpm-snap-del]')) {
+            return;
+          }
+          setSnapDeleteId(null);
+        };
+        document.addEventListener('pointerdown', onPointerDown);
+        return () => document.removeEventListener('pointerdown', onPointerDown);
+      }, [snapDeleteId]);
 
       const hadApi = React.useRef(!!api);
       useEffect(() => {
@@ -744,7 +1100,7 @@ window.__ModuleLoader__.load({
 
       const runAction = useCallback(
         async (key, action) => {
-          if (!api || pending) return;
+          if (!api || pending || snapBusyRef.current) return;
           setPending(key);
           try {
             const res = await action();
@@ -781,6 +1137,139 @@ window.__ModuleLoader__.load({
         [api, runAction]
       );
 
+      const startSnapshotName = useCallback(() => {
+        if (pending) return;
+        setSnapDeleteId(null);
+        setSnapNameDraft(t('snapPrefix') + ' ' + localStamp(Date.now()));
+        setSnapNaming(true);
+      }, [pending, t]);
+
+      const cancelSnapshotName = useCallback(() => {
+        setSnapNaming(false);
+        setSnapNameDraft('');
+      }, []);
+
+      const saveSnapshot = useCallback(() => {
+        if (pending) return;
+        const fallback = t('snapPrefix') + ' ' + localStamp(Date.now());
+        const name = String(snapNameDraft || '').trim() || fallback;
+        const snapshot = captureSnapshot(items, liveByEntry, name, snapshots);
+        if (!commitSnapshots([snapshot].concat(snapshots))) {
+          setToast({ kind: 'err', text: t('snapStoreFailed') });
+          return;
+        }
+        setSnapNaming(false);
+        setSnapNameDraft('');
+        setSnapListOpen(true);
+        setSnapDeleteId(null);
+        setToast({
+          kind: 'ok',
+          text: fillTemplate(t('snapSaved'), { n: snapshot.bundles.length }),
+        });
+      }, [commitSnapshots, items, liveByEntry, pending, snapNameDraft, snapshots, t]);
+
+      const deleteSnapshot = useCallback(
+        (id) => {
+          if (pending) return;
+          const next = snapshots.filter((snapshot) => snapshot.id !== id);
+          if (!commitSnapshots(next)) {
+            setToast({ kind: 'err', text: t('snapStoreFailed') });
+            return;
+          }
+          setSnapDeleteId(null);
+          setToast({ kind: 'ok', text: t('snapDeleted') });
+        },
+        [commitSnapshots, pending, snapshots, t]
+      );
+
+      const restoreSnapshot = useCallback(
+        async (target) => {
+          if (!target || !api || pending || snapBusyRef.current || inventory.loading) return;
+          snapBusyRef.current = true;
+          setPending(SNAP_PENDING);
+          setSnapDeleteId(null);
+          setSnapNaming(false);
+          const counts = { applied: 0, restart: 0, failed: 0, skipped: 0, overridden: 0 };
+          try {
+            const backupName = t('snapPreRestore') + ' ' + localShort(Date.now());
+            const backup = captureSnapshot(items, liveByEntry, backupName, snapshots);
+            if (!commitSnapshots([backup].concat(snapshots))) {
+              setToast({ kind: 'err', text: t('snapStoreFailed') });
+              return;
+            }
+            setSnapListOpen(true);
+            const bundleByName = new Map();
+            for (const bundle of items) {
+              if (bundle && bundle.name) bundleByName.set(bundle.name, bundle);
+            }
+            const liveIndex = new Map(liveByEntry);
+            for (const record of target.bundles) {
+              const current = bundleByName.get(record.name);
+              if (!current) {
+                counts.skipped += 1;
+                continue;
+              }
+              if (!!current.enabled !== !!record.enabled) {
+                try {
+                  const res = await callRemote(api, 'setBundleEnabled', [
+                    record.name,
+                    !!record.enabled,
+                  ]);
+                  counts[snapshotOutcome(res)] += 1;
+                } catch (err) {
+                  counts.failed += 1;
+                }
+              }
+              for (const row of record.rows) {
+                const live = liveIndex.get(row.entryId);
+                if (!live || !!live.enabled === !!row.enabled) continue;
+                try {
+                  const res = await callRemote(api, 'setPluginEnabled', [
+                    row.entryId,
+                    !!row.enabled,
+                  ]);
+                  counts[snapshotOutcome(res)] += 1;
+                } catch (err) {
+                  counts.failed += 1;
+                }
+              }
+            }
+            try {
+              await reload();
+            } catch (err) {
+              console.warn('[dsh-plugin-manager] reload after snapshot restore failed', err);
+            }
+            const restored = counts.applied + counts.restart;
+            const parts = [fillTemplate(t('snapRestored'), { n: restored })];
+            if (counts.skipped) parts.push(fillTemplate(t('snapSkipped'), { m: counts.skipped }));
+            if (counts.failed) parts.push(fillTemplate(t('snapFailed'), { k: counts.failed }));
+            if (counts.overridden) {
+              parts.push(fillTemplate(t('snapOverridden'), { n: counts.overridden }));
+            }
+            if (counts.restart) parts.push(t('snapRestart'));
+            setToast({
+              kind: counts.failed ? 'err' : 'ok',
+              text: parts.join(localeId === 'en' ? ', ' : '，'),
+            });
+          } finally {
+            snapBusyRef.current = false;
+            setPending(null);
+          }
+        },
+        [
+          api,
+          commitSnapshots,
+          inventory.loading,
+          items,
+          liveByEntry,
+          localeId,
+          pending,
+          reload,
+          snapshots,
+          t,
+        ]
+      );
+
       return h(
         'div',
         { className: 'dpm-page' },
@@ -802,7 +1291,7 @@ window.__ModuleLoader__.load({
               {
                 type: 'button',
                 className: 'dpm-btn',
-                disabled: inventory.loading,
+                disabled: inventory.loading || pending === SNAP_PENDING,
                 onClick: () => reload(),
               },
               inventory.loading ? t('loading') : t('refresh')
@@ -829,6 +1318,25 @@ window.__ModuleLoader__.load({
                 )
               )
             )
+          : null,
+        items.length
+          ? h(SnapshotBar, {
+              t,
+              snapshots,
+              listOpen: snapListOpen,
+              naming: snapNaming,
+              nameDraft: snapNameDraft,
+              deleteId: snapDeleteId,
+              busy: !!pending || inventory.loading,
+              onStartName: startSnapshotName,
+              onNameDraft: setSnapNameDraft,
+              onSaveName: saveSnapshot,
+              onCancelName: cancelSnapshotName,
+              onToggleList: () => setSnapListOpen((prev) => !prev),
+              onRestore: restoreSnapshot,
+              onAskDelete: (id) => setSnapDeleteId(id),
+              onDelete: deleteSnapshot,
+            })
           : null,
         inventory.error && inventory.error !== 'unavailable'
           ? h('div', { className: 'dpm-error' }, t('loadFailed') + ': ' + inventory.error)
@@ -859,7 +1367,7 @@ window.__ModuleLoader__.load({
               liveRows: liveByEntry,
               t,
               localeId,
-              pending: pending === entry.bundle.name,
+              pending: pending === entry.bundle.name || pending === SNAP_PENDING,
               confirming,
               setConfirming,
               expanded: !!expanded[entry.bundle.name],

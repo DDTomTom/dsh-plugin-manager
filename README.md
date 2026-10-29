@@ -41,6 +41,13 @@
 - 卸载：点「卸载」→ 变成「确认卸载」→ 再点一次才真正删除；点「取消」放弃。
 - 操作结果会在面板底部以提示条给出：已生效 / 已保存，重启 DSH 后生效 / 已被更上层覆盖 / 操作失败。
 
+## 开关快照（一键恢复）
+
+- **记住当前**：点快照栏的「记住当前」，名称默认 `快照 YYYY-MM-DD HH:mm`（本地时间，可改），保存时会记录当前 profile 全部 bundle 的开关以及每个 bundle 内组件行的开关。
+- **查看 / 删除**：点「快照 (n)」展开列表（最新在前）；每条显示名称、本地时间、启用数与总数。删除两步：点「删除」变成「确认删除」，再点一次才真正删除，点其它位置取消确认。
+- **恢复**：点「恢复」后先把当前状态自动存成 `恢复前 MM-DD HH:mm` 快照，再按快照顺序逐项调用 `setBundleEnabled` / `setPluginEnabled`，只改状态不同的项；当前清单里已不存在的 bundle 计为跳过（未安装）。单项失败不会中断整体，全部结束后刷新清单并给出「已恢复 / 跳过 / 失败」统计，需重启的项会额外提示。
+- **存储**：快照存在当前浏览器 origin 的 `localStorage`，键为 `dsh-plugin-manager:snapshots:v1`，JSON 数组、最新在前、最多保留 20 条；损坏或不可解析的数据按空列表处理。Web 版与桌面版不共享快照。
+
 ## 来源徽标怎么判断
 
 | 徽标 | 判断依据（bundle `source`） |
@@ -61,6 +68,7 @@
 - 客户端代码改动需要整页刷新（Ctrl+R）才会加载新版 `client.js`；桌面版重开更稳。
 - 卸载不备份，删了就删了；删前请确认还能重装。
 - 只在深色主题下做视觉验证；面板只使用 `--dsw-alias-*` 主题 token，浅色主题理论可读但未单独验证。
+- 开关快照存在浏览器本地（见上节）：换浏览器、换 origin（Web / 桌面）或清理站点数据后不可用；快照只记录开关状态，不含插件配置和分类筛选。
 
 ## 目录结构
 
@@ -77,6 +85,8 @@ icon.svg            # 图标
 ## English
 
 A sidebar plugin manager for DeepSeek Harness: lists every non-native plugin installed in the current profile (market, npm, GitHub, or locally linked), shows a short description and source badge, filters them by inferred function category, and lets you enable, disable, or uninstall each bundle (plus its individual loader rows) from one panel.
+
+Snapshots: "Remember current" stores the enabled/disabled state of every profile bundle and its component rows in browser `localStorage` (key `dsh-plugin-manager:snapshots:v1`, latest 20, newest first). Restoring first saves a "Before restore" snapshot, then applies only the differences serially and reports applied / skipped / failed / restart counts. Web and desktop profiles do not share snapshots.
 
 Categories are inferred from each plugin's name and description with keyword rules defined in `CATEGORIES` at the top of `client.js`; nothing is fetched from the network and the plugin itself is never modified.
 
